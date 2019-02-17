@@ -16,8 +16,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
 
-        fab.setOnClickListener { view ->
-            EventTracker.logEvent(MyEvent.ShareImage("image.jpg", "some string message"))
+        fab.setOnClickListener {
+            EventTracker.logEvent(
+                MyEvent.ShareImage(
+                    "image.jpg",
+                    "some string message"
+                )
+            )
         }
     }
 
