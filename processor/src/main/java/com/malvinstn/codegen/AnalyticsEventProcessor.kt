@@ -4,7 +4,10 @@ import com.google.auto.service.AutoService
 import com.google.common.base.CaseFormat
 import com.malvinstn.annotation.AnalyticsEvent
 import com.squareup.kotlinpoet.*
-import me.eugeniomarletti.kotlin.metadata.*
+import me.eugeniomarletti.kotlin.metadata.KotlinClassMetadata
+import me.eugeniomarletti.kotlin.metadata.KotlinMetadataUtils
+import me.eugeniomarletti.kotlin.metadata.kotlinMetadata
+import me.eugeniomarletti.kotlin.metadata.modality
 import me.eugeniomarletti.kotlin.metadata.shadow.metadata.ProtoBuf
 import me.eugeniomarletti.kotlin.processing.KotlinAbstractProcessor
 import java.io.File
@@ -39,7 +42,7 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
         annotations: Set<TypeElement>,
         roundEnv: RoundEnvironment
     ): Boolean {
-        val outputDir = options[kaptGeneratedOption]?.replace("kaptKotlin", "kapt")?.let(::File)
+        val outputDir = generatedDir
         if (outputDir == null) {
             messager.printMessage(
                 Diagnostic.Kind.ERROR,
