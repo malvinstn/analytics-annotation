@@ -180,7 +180,7 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
             .addParameter(EVENT_PARAMETER_NAME, className)
             .addStatement("val %L: %T", EVENT_NAME_PARAMETER_NAME, String::class)
             .addStatement("val %L: %T", EVENT_PARAM_PARAMETER_NAME, BUNDLE_CLASS)
-            .beginControlFlow("when(%L)", EVENT_PARAMETER_NAME)
+            .beginControlFlow("when (%L)", EVENT_PARAMETER_NAME)
 
         for ((eventName, eventParamList) in analyticEvents) {
             extensionFunSpecBuilder.addCode(
@@ -230,7 +230,7 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
         }
         extensionFunSpecBuilder.endControlFlow()
             .addStatement(
-                "this.%L(%L, %L)",
+                "%L(%L, %L)",
                 LOG_EVENT_FUNCTION_NAME,
                 EVENT_NAME_PARAMETER_NAME,
                 EVENT_PARAM_PARAMETER_NAME
