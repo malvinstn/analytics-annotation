@@ -183,50 +183,50 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
             .beginControlFlow("when (%L)", EVENT_PARAMETER_NAME)
 
         for ((eventName, eventParamList) in analyticEvents) {
-            extensionFunSpecBuilder.addCode(
-                CodeBlock.builder()
-                    .addStatement("is %T -> {", eventName)
-                    .indent()
-                    .addStatement(
-                        "%L = %S",
-                        EVENT_NAME_PARAMETER_NAME,
-                        eventName.simpleName.convertCase(
-                            CaseFormat.UPPER_CAMEL,
-                            CaseFormat.LOWER_UNDERSCORE
-                        )
+            val codeBlock = CodeBlock.builder()
+                .addStatement("is %T -> {", eventName)
+                .indent()
+                .addStatement(
+                    "%L = %S",
+                    EVENT_NAME_PARAMETER_NAME,
+                    eventName.simpleName.convertCase(
+                        CaseFormat.UPPER_CAMEL,
+                        CaseFormat.LOWER_UNDERSCORE
                     )
-                    .apply {
-                        if (eventParamList.isNotEmpty()) {
-                            addStatement("%L = %T(", EVENT_PARAM_PARAMETER_NAME, BUNDLE_OF_FUNCTION)
-                            indent()
-                            for ((index, parameter) in eventParamList.withIndex()) {
-                                val size = eventParamList.size
-                                val separator = if (index == size - 1) {
-                                    ""
-                                } else {
-                                    ","
-                                }
-                                addStatement(
-                                    "%S to %L.%L%L",
-                                    parameter.convertCase(
-                                        CaseFormat.LOWER_CAMEL,
-                                        CaseFormat.LOWER_UNDERSCORE
-                                    ),
-                                    EVENT_PARAMETER_NAME,
-                                    parameter,
-                                    separator
-                                )
+                )
+                .apply {
+                    if (eventParamList.isNotEmpty()) {
+                        addStatement("%L = %T(", EVENT_PARAM_PARAMETER_NAME, BUNDLE_OF_FUNCTION)
+                        indent()
+                        for ((index, parameter) in eventParamList.withIndex()) {
+                            val size = eventParamList.size
+                            val separator = if (index == size - 1) {
+                                ""
+                            } else {
+                                ","
                             }
-                            unindent()
-                            addStatement(")")
-                        } else {
-                            addStatement("%L = %T()", EVENT_PARAM_PARAMETER_NAME, BUNDLE_CLASS)
+                            addStatement(
+                                "%S to %L.%L%L",
+                                parameter.convertCase(
+                                    CaseFormat.LOWER_CAMEL,
+                                    CaseFormat.LOWER_UNDERSCORE
+                                ),
+                                EVENT_PARAMETER_NAME,
+                                parameter,
+                                separator
+                            )
                         }
+                        unindent()
+                        addStatement(")")
+                    } else {
+                        addStatement("%L = %T()", EVENT_PARAM_PARAMETER_NAME, BUNDLE_CLASS)
                     }
-                    .unindent()
-                    .addStatement("}")
-                    .build()
-            )
+                }
+                .unindent()
+                .addStatement("}")
+                .build()
+
+            extensionFunSpecBuilder.addCode(codeBlock)
         }
         extensionFunSpecBuilder.endControlFlow()
             .addStatement(
