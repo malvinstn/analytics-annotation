@@ -8,7 +8,6 @@ import me.eugeniomarletti.kotlin.metadata.*
 import me.eugeniomarletti.kotlin.metadata.shadow.metadata.ProtoBuf
 import me.eugeniomarletti.kotlin.processing.KotlinAbstractProcessor
 import java.io.File
-import javax.annotation.processing.Messager
 import javax.annotation.processing.Processor
 import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.SourceVersion
@@ -36,10 +35,16 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
 
     override fun getSupportedSourceVersion(): SourceVersion = SourceVersion.latestSupported()
 
-    override fun process(annotations: Set<TypeElement>, roundEnv: RoundEnvironment): Boolean {
+    override fun process(
+        annotations: Set<TypeElement>,
+        roundEnv: RoundEnvironment
+    ): Boolean {
         val outputDir = options[kaptGeneratedOption]?.replace("kaptKotlin", "kapt")?.let(::File)
         if (outputDir == null) {
-            messager.printMessage(Diagnostic.Kind.ERROR, "Cannot find generated output dir.")
+            messager.printMessage(
+                Diagnostic.Kind.ERROR,
+                "Cannot find generated output dir."
+            )
             return false
         }
 
@@ -48,14 +53,17 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
 
         for (annotatedElement in annotatedElements) {
             // Check if the annotatedElement is a Kotlin sealed class
-            val analyticsElement = getAnalyticsElement(annotatedElement, messager) ?: continue
+            val analyticsElement = getAnalyticsElement(annotatedElement) ?: continue
 
             // Get all the declared inner class as our Analytics Event
-            val declaredAnalyticsEvents = getDeclaredAnalyticsEvents(analyticsElement, messager)
+            val declaredAnalyticsEvents = getDeclaredAnalyticsEvents(analyticsElement)
 
             if (declaredAnalyticsEvents.isEmpty()) {
                 // No declared Analytics Event, skip this class.
-                messager.printMessage(Diagnostic.Kind.WARNING, "$analyticsElement has no valid inner class.")
+                messager.printMessage(
+                    Diagnostic.Kind.WARNING,
+                    "$analyticsElement has no valid inner class."
+                )
                 continue
             }
 
@@ -65,27 +73,32 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
         return true
     }
 
-    private fun getAnalyticsElement(element: Element, messager: Messager): TypeElement? {
+    private fun getAnalyticsElement(element: Element): TypeElement? {
         val kotlinMetadata = element.kotlinMetadata
         if (kotlinMetadata !is KotlinClassMetadata || element !is TypeElement) {
             // Not a Kotlin class
-            messager.printMessage(Diagnostic.Kind.WARNING, "$element is not a Kotlin class.")
+            messager.printMessage(
+                Diagnostic.Kind.WARNING,
+                "$element is not a Kotlin class."
+            )
             return null
         }
         val proto = kotlinMetadata.data.classProto
         if (proto.modality != ProtoBuf.Modality.SEALED) {
             // Is not a sealed class
-            messager.printMessage(Diagnostic.Kind.WARNING, "$element is not a sealed Kotlin class.")
+            messager.printMessage(
+                Diagnostic.Kind.WARNING,
+                "$element is not a sealed Kotlin class."
+            )
             return null
         }
         return element
     }
 
     private fun getDeclaredAnalyticsEvents(
-        analyticsElement: TypeElement,
-        messager: Messager
+        analyticsElement: TypeElement
     ): Map<ClassName, List<String>> {
-        val analyticsEvents: MutableMap<ClassName, List<String>> = mutableMapOf()
+        val analyticsEvents = mutableMapOf<ClassName, List<String>>()
         // Get all declared inner elements, but skip the last element
         // since the last element is the actual analyticsElement itself.
         val enclosedElements = analyticsElement.enclosedElements.dropLast(1)
@@ -99,11 +112,17 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
 
             if (kotlinMetadata !is KotlinClassMetadata || element !is TypeElement) {
                 // Inner class is not a Kotlin class
-                messager.printMessage(Diagnostic.Kind.WARNING, "$element is not a kotlin class.")
+                messager.printMessage(
+                    Diagnostic.Kind.WARNING,
+                    "$element is not a kotlin class."
+                )
                 continue
             } else if (!typeUtils.directSupertypes(type).contains(supertype)) {
                 // Inner class does not extend from the enclosing sealed class
-                messager.printMessage(Diagnostic.Kind.WARNING, "$element does not extend from $analyticsElement.")
+                messager.printMessage(
+                    Diagnostic.Kind.WARNING,
+                    "$element does not extend from $analyticsElement."
+                )
                 continue
             }
 
@@ -115,13 +134,18 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
             val nameResolver = kotlinMetadata.data.nameResolver
 
             if (proto.constructorCount == 0) {
-                messager.printMessage(Diagnostic.Kind.WARNING, "$element has no constructor.")
+                messager.printMessage(
+                    Diagnostic.Kind.WARNING,
+                    "$element has no constructor."
+                )
                 continue
             }
 
-            val eventParameters = proto.constructorList[0].valueParameterList
+            val mainConstructor = proto.constructorList[0]
+            val eventParameters = mainConstructor.valueParameterList
                 .map { valueParameter ->
-                    // Resolve the constructor parameter's name using nameResolver.
+                    // Resolve the constructor parameter's name
+                    // using nameResolver.
                     nameResolver.getString(valueParameter.name)
                 }
 
@@ -155,25 +179,36 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
             .addStatement("val %L: %T", EVENT_PARAM_PARAMETER_NAME, BUNDLE_CLASS)
             .beginControlFlow("when(%L)", EVENT_PARAMETER_NAME)
 
-        for ((analyticEventName, analyticEventParameterList) in analyticEvents) {
+        for ((eventName, eventParamList) in analyticEvents) {
             extensionFunSpecBuilder.addCode(
                 CodeBlock.builder()
-                    .addStatement("is %T -> {", analyticEventName)
+                    .addStatement("is %T -> {", eventName)
                     .indent()
                     .addStatement(
                         "%L = %S",
                         EVENT_NAME_PARAMETER_NAME,
-                        analyticEventName.simpleName.convertCase(CaseFormat.UPPER_CAMEL, CaseFormat.LOWER_UNDERSCORE)
+                        eventName.simpleName.convertCase(
+                            CaseFormat.UPPER_CAMEL,
+                            CaseFormat.LOWER_UNDERSCORE
+                        )
                     )
                     .apply {
-                        if (analyticEventParameterList.isNotEmpty()) {
+                        if (eventParamList.isNotEmpty()) {
                             addStatement("%L = %T(", EVENT_PARAM_PARAMETER_NAME, BUNDLE_OF_FUNCTION)
                             indent()
-                            for ((index, parameter) in analyticEventParameterList.withIndex()) {
-                                val separator = if (index == analyticEventParameterList.size - 1) "" else ","
+                            for ((index, parameter) in eventParamList.withIndex()) {
+                                val size = eventParamList.size
+                                val separator = if (index == size - 1) {
+                                    ""
+                                } else {
+                                    ","
+                                }
                                 addStatement(
                                     "%S to %L.%L%L",
-                                    parameter.convertCase(CaseFormat.LOWER_CAMEL, CaseFormat.LOWER_UNDERSCORE),
+                                    parameter.convertCase(
+                                        CaseFormat.LOWER_CAMEL,
+                                        CaseFormat.LOWER_UNDERSCORE
+                                    ),
                                     EVENT_PARAMETER_NAME,
                                     parameter,
                                     separator
@@ -207,6 +242,13 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
 
 }
 
-private fun String.convertCase(fromCase: CaseFormat, toCase: CaseFormat): String {
+/**
+ * Helper function to convert String case
+ * using guava's [CaseFormat].
+ */
+private fun String.convertCase(
+    fromCase: CaseFormat,
+    toCase: CaseFormat
+): String {
     return fromCase.to(toCase, this)
 }
