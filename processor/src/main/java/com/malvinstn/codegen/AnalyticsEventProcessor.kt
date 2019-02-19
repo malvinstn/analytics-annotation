@@ -21,6 +21,8 @@ import javax.tools.Diagnostic
 @AutoService(Processor::class)
 class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
     companion object {
+        private val ANNOTATION = AnalyticsEvent::class.java
+
         private const val EVENT_PARAMETER_NAME = "event"
         private const val EVENT_NAME_PARAMETER_NAME = "name"
         private const val EVENT_PARAM_PARAMETER_NAME = "params"
@@ -32,9 +34,8 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
         private val BUNDLE_OF_FUNCTION = ClassName("androidx.core.os", "bundleOf")
     }
 
-    private val annotation = AnalyticsEvent::class.java
 
-    override fun getSupportedAnnotationTypes() = setOf(annotation.canonicalName)
+    override fun getSupportedAnnotationTypes() = setOf(ANNOTATION.canonicalName)
 
     override fun getSupportedSourceVersion(): SourceVersion = SourceVersion.latestSupported()
 
@@ -52,7 +53,7 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
         }
 
         // Get all elements that has been annotated with our annotation
-        val annotatedElements = roundEnv.getElementsAnnotatedWith(annotation)
+        val annotatedElements = roundEnv.getElementsAnnotatedWith(ANNOTATION)
 
         for (annotatedElement in annotatedElements) {
             // Check if the annotatedElement is a Kotlin sealed class
