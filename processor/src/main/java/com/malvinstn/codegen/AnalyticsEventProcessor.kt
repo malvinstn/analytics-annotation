@@ -103,19 +103,17 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
         analyticsElement: TypeElement
     ): Map<ClassName, List<String>> {
         val analyticsEvents = mutableMapOf<ClassName, List<String>>()
-        // Get all declared inner elements, but skip the last element
-        // since the last element is the actual analyticsElement itself.
-        val enclosedElements = analyticsElement.enclosedElements.dropLast(1)
+
+        val enclosedElements = analyticsElement.enclosedElements
 
         val supertype = analyticsElement.asType()
 
         for (element in enclosedElements) {
 
             val type = element.asType()
-            val kotlinMetadata = element.kotlinMetadata
 
-            if (kotlinMetadata !is KotlinClassMetadata || element !is TypeElement) {
-                // Inner class is not a Kotlin class
+            if (element !is TypeElement) {
+                // Inner element is not a class
                 messager.printMessage(
                     Diagnostic.Kind.WARNING,
                     "$element is not a kotlin class."
@@ -129,6 +127,8 @@ class AnalyticsEventProcessor : KotlinAbstractProcessor(), KotlinMetadataUtils {
                 )
                 continue
             }
+            val kotlinMetadata = element.kotlinMetadata
+                    as KotlinClassMetadata
 
             // Make use of KotlinPoet's ClassName to easily get the class' name.
             val eventClass = element.asClassName()
